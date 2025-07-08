@@ -1,13 +1,59 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+
+import React, { useState } from 'react';
+import LoginSignup from '@/components/LoginSignup';
+import Dashboard from '@/components/Dashboard';
+
+type UserState = {
+  isLoggedIn: boolean;
+  userType: 'registered' | 'trial' | null;
+  userData: any;
+};
 
 const Index = () => {
+  const [userState, setUserState] = useState<UserState>({
+    isLoggedIn: false,
+    userType: null,
+    userData: null
+  });
+
+  const handleLogin = (userData: any) => {
+    setUserState({
+      isLoggedIn: true,
+      userType: 'registered',
+      userData
+    });
+  };
+
+  const handleTryFree = () => {
+    setUserState({
+      isLoggedIn: true,
+      userType: 'trial',
+      userData: { name: 'Trial User' }
+    });
+  };
+
+  const handleSignOut = () => {
+    setUserState({
+      isLoggedIn: false,
+      userType: null,
+      userData: null
+    });
+  };
+
+  if (!userState.isLoggedIn) {
+    return (
+      <LoginSignup 
+        onLogin={handleLogin}
+        onTryFree={handleTryFree}
+      />
+    );
+  }
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
-      </div>
-    </div>
+    <Dashboard 
+      onSignOut={handleSignOut}
+      userType={userState.userType!}
+    />
   );
 };
 
