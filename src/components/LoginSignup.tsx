@@ -4,24 +4,74 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Heart, Mail, User, Phone } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface LoginSignupProps {
-  onLogin: (userData: any) => void;
   onTryFree: () => void;
 }
 
-const LoginSignup = ({ onLogin, onTryFree }: LoginSignupProps) => {
+const LoginSignup = ({ onTryFree }: LoginSignupProps) => {
   const [isLogin, setIsLogin] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     contact: '',
     password: ''
   });
+  const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onLogin(formData);
+    setIsLoading(true);
+
+    try {
+      if (isLogin) {
+        // Sign in existing user
+        const { error } = await supabase.auth.signInWithPassword({
+          email: formData.email,
+          password: formData.password,
+        });
+
+        if (error) throw error;
+        
+        toast({
+          title: "Welcome back!",
+          description: "You've successfully signed in."
+        });
+      } else {
+        // Sign up new user
+        const redirectUrl = `${window.location.origin}/`;
+        
+        const { error } = await supabase.auth.signUp({
+          email: formData.email,
+          password: formData.password,
+          options: {
+            emailRedirectTo: redirectUrl,
+            data: {
+              name: formData.name,
+              contact: formData.contact
+            }
+          }
+        });
+
+        if (error) throw error;
+
+        toast({
+          title: "Account created!",
+          description: "Welcome to Serenity. Your journey begins now."
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Authentication Error",
+        description: error.message || "Something went wrong. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -111,9 +161,10 @@ const LoginSignup = ({ onLogin, onTryFree }: LoginSignupProps) => {
               <div className="flex space-x-3">
                 <Button 
                   type="submit" 
-                  className="flex-1 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-medium py-6"
+                  disabled={isLoading}
+                  className="flex-1 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-medium py-6 disabled:opacity-50"
                 >
-                  {isLogin ? 'Sign In' : 'Sign Up'}
+                  {isLoading ? 'Loading...' : (isLogin ? 'Sign In' : 'Sign Up')}
                 </Button>
                 <Button 
                   type="button"
