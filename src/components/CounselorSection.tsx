@@ -1,140 +1,216 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Users, Star, Clock, MessageCircle } from 'lucide-react';
+import { Users, Lock, Crown, Phone, Mail, MapPin, Clock, Star } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
 
 interface Counselor {
   id: string;
   name: string;
   specialization: string;
-  rating: number;
-  experience: string;
-  availability: 'available' | 'busy' | 'offline';
-  nextSlot: string;
-  image: string;
+  contact_email: string;
+  contact_phone: string;
+  experience_years: number;
+  bio: string;
+  location: string;
+  availability_schedule: string;
 }
 
 const CounselorSection = () => {
-  const counselors: Counselor[] = [
-    {
-      id: '1',
-      name: 'Dr. Sarah Johnson',
-      specialization: 'Anxiety & Depression',
-      rating: 4.9,
-      experience: '8 years',
-      availability: 'available',
-      nextSlot: 'Available now',
-      image: '👩‍⚕️'
-    },
-    {
-      id: '2',
-      name: 'Dr. Michael Chen',
-      specialization: 'Stress Management',
-      rating: 4.8,
-      experience: '12 years',
-      availability: 'busy',
-      nextSlot: 'Next available: 2:00 PM',
-      image: '👨‍⚕️'
-    },
-    {
-      id: '3',
-      name: 'Dr. Emily Rodriguez',
-      specialization: 'Trauma & PTSD',
-      rating: 4.9,
-      experience: '10 years',
-      availability: 'available',
-      nextSlot: 'Available in 15 min',
-      image: '👩‍⚕️'
-    },
-    {
-      id: '4',
-      name: 'Dr. David Thompson',
-      specialization: 'Relationship Issues',
-      rating: 4.7,
-      experience: '6 years',
-      availability: 'offline',
-      nextSlot: 'Next available: Tomorrow 9:00 AM',
-      image: '👨‍⚕️'
-    }
-  ];
+  const [counselors, setCounselors] = useState<Counselor[]>([]);
+  const [isPremium, setIsPremium] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
 
-  const getAvailabilityColor = (availability: string) => {
-    switch (availability) {
-      case 'available':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'busy':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'offline':
-        return 'bg-red-100 text-red-800 border-red-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+  useEffect(() => {
+    checkPremiumStatus();
+  }, []);
+
+  useEffect(() => {
+    if (isPremium) {
+      fetchCounselors();
+    }
+  }, [isPremium]);
+
+  const checkPremiumStatus = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('is_premium')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (profile) {
+        setIsPremium(profile.is_premium || false);
+      }
+    } catch (error) {
+      console.error('Error checking premium status:', error);
+    }
+    setIsLoading(false);
+  };
+
+  const fetchCounselors = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('counselors')
+        .select('*')
+        .order('name');
+
+      if (error) {
+        console.error('Error fetching counselors:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load counselors. Please try again.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      setCounselors(data || []);
+    } catch (error) {
+      console.error('Error fetching counselors:', error);
     }
   };
 
-  const handleContactCounselor = (counselor: Counselor) => {
-    console.log(`Contacting ${counselor.name}`);
-    // In a real app, this would open a booking modal or redirect to booking page
+  const handleUpgradeToPremium = () => {
+    navigate('/premium');
   };
+
+  if (isLoading) {
+    return (
+      <Card className="h-full shadow-lg border-0 bg-gradient-to-br from-blue-50 to-purple-50">
+        <CardContent className="flex items-center justify-center h-full">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!isPremium) {
+    return (
+      <Card className="h-full shadow-lg border-0 bg-gradient-to-br from-purple-50 to-pink-50">
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center space-x-2 text-slate-700">
+            <Lock className="h-6 w-6 text-purple-500" />
+            <span>Professional Counselors</span>
+          </CardTitle>
+          <p className="text-slate-500 text-sm">Connect with certified mental health professionals</p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="text-center py-8">
+            <Crown className="h-16 w-16 text-purple-500 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-slate-700 mb-2">Premium Feature</h3>
+            <p className="text-slate-600 mb-6">
+              Upgrade to premium to access our network of professional counselors with their contact information and availability.
+            </p>
+            <div className="space-y-2 text-sm text-slate-600 mb-6">
+              <p>✓ Access to 5+ certified counselors</p>
+              <p>✓ Direct contact information</p>
+              <p>✓ Specialization details</p>
+              <p>✓ Availability schedules</p>
+            </div>
+            <Button 
+              onClick={handleUpgradeToPremium}
+              className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
+            >
+              <Crown className="mr-2 h-4 w-4" />
+              Upgrade to Premium
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
-    <Card className="h-full shadow-lg border-0 bg-gradient-to-br from-blue-50 to-purple-50">
+    <Card className="h-full shadow-lg border-0 bg-gradient-to-br from-green-50 to-blue-50">
       <CardHeader className="pb-4">
         <CardTitle className="flex items-center space-x-2 text-slate-700">
-          <Users className="h-6 w-6 text-blue-500" />
-          <span>Mental Health Professionals</span>
+          <Users className="h-6 w-6 text-green-500" />
+          <span>Professional Counselors</span>
+          <Badge className="bg-green-100 text-green-700">Premium</Badge>
         </CardTitle>
-        <p className="text-slate-500 text-sm">Connect with licensed counselors and therapists</p>
+        <p className="text-slate-500 text-sm">Available certified mental health professionals</p>
       </CardHeader>
-      
-      <CardContent>
-        <div className="space-y-4 max-h-96 overflow-y-auto">
-          {counselors.map((counselor) => (
-            <Card key={counselor.id} className="bg-white/70 border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
-              <CardContent className="p-4">
-                <div className="flex items-start space-x-4">
-                  <div className="text-3xl">{counselor.image}</div>
-                  
-                  <div className="flex-1 space-y-2">
-                    <div className="flex items-start justify-between">
+      <CardContent className="space-y-4">
+        <div className="space-y-3 max-h-80 overflow-y-auto">
+          {counselors.length === 0 ? (
+            <div className="text-center py-4">
+              <p className="text-slate-600">Loading counselors...</p>
+            </div>
+          ) : (
+            counselors.map((counselor) => (
+              <Card key={counselor.id} className="bg-white/70 border border-slate-100 shadow-sm">
+                <CardContent className="p-4">
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-start">
                       <div>
-                        <h3 className="font-semibold text-slate-700">{counselor.name}</h3>
-                        <p className="text-sm text-slate-500">{counselor.specialization}</p>
-                      </div>
-                      <Badge className={getAvailabilityColor(counselor.availability)}>
-                        {counselor.availability}
-                      </Badge>
-                    </div>
-                    
-                    <div className="flex items-center space-x-4 text-sm text-slate-600">
-                      <div className="flex items-center space-x-1">
-                        <Star className="h-4 w-4 text-yellow-500 fill-current" />
-                        <span>{counselor.rating}</span>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <Clock className="h-4 w-4" />
-                        <span>{counselor.experience}</span>
+                        <h4 className="font-semibold text-slate-700 flex items-center space-x-2">
+                          <span>{counselor.name}</span>
+                          <div className="flex items-center space-x-1">
+                            <Star className="h-3 w-3 text-yellow-500 fill-current" />
+                            <span className="text-xs text-slate-600">{counselor.experience_years}+ years</span>
+                          </div>
+                        </h4>
+                        <p className="text-sm text-purple-600 font-medium">{counselor.specialization}</p>
                       </div>
                     </div>
                     
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm text-slate-600">{counselor.nextSlot}</p>
-                      <Button
-                        size="sm"
-                        onClick={() => handleContactCounselor(counselor)}
-                        disabled={counselor.availability === 'offline'}
-                        className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white disabled:opacity-50"
+                    <p className="text-xs text-slate-600 line-clamp-2">{counselor.bio}</p>
+                    
+                    <div className="grid grid-cols-1 gap-1 text-xs text-slate-600">
+                      <div className="flex items-center space-x-2">
+                        <Mail className="h-3 w-3 text-blue-500" />
+                        <span className="truncate">{counselor.contact_email}</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Phone className="h-3 w-3 text-green-500" />
+                        <span>{counselor.contact_phone}</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <MapPin className="h-3 w-3 text-red-500" />
+                        <span className="truncate">{counselor.location}</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Clock className="h-3 w-3 text-purple-500" />
+                        <span className="truncate">{counselor.availability_schedule}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex space-x-2">
+                      <Button 
+                        size="sm" 
+                        className="flex-1 bg-gradient-to-r from-blue-500 to-green-500 hover:from-blue-600 hover:to-green-600 text-white"
+                        onClick={() => window.open(`tel:${counselor.contact_phone}`)}
                       >
-                        <MessageCircle className="mr-1 h-3 w-3" />
-                        Contact Now
+                        <Phone className="mr-1 h-3 w-3" />
+                        Call
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="flex-1"
+                        onClick={() => window.open(`mailto:${counselor.contact_email}`)}
+                      >
+                        <Mail className="mr-1 h-3 w-3" />
+                        Email
                       </Button>
                     </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            ))
+          )}
         </div>
       </CardContent>
     </Card>

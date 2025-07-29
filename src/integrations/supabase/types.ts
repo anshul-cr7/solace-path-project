@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      counselors: {
+        Row: {
+          availability_schedule: string | null
+          bio: string | null
+          contact_email: string | null
+          contact_phone: string | null
+          created_at: string
+          experience_years: number | null
+          id: string
+          location: string | null
+          name: string
+          specialization: string | null
+          updated_at: string
+        }
+        Insert: {
+          availability_schedule?: string | null
+          bio?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          experience_years?: number | null
+          id?: string
+          location?: string | null
+          name: string
+          specialization?: string | null
+          updated_at?: string
+        }
+        Update: {
+          availability_schedule?: string | null
+          bio?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          experience_years?: number | null
+          id?: string
+          location?: string | null
+          name?: string
+          specialization?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       journal_entries: {
         Row: {
           content: string
@@ -44,6 +86,7 @@ export type Database = {
           created_at: string
           email: string | null
           id: string
+          is_premium: boolean | null
           name: string | null
           updated_at: string
           user_id: string
@@ -53,6 +96,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: string
+          is_premium?: boolean | null
           name?: string | null
           updated_at?: string
           user_id: string
@@ -62,6 +106,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: string
+          is_premium?: boolean | null
           name?: string | null
           updated_at?: string
           user_id?: string
