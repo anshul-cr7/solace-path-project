@@ -1,15 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Crown, Check, ArrowLeft, Users, Phone, Mail, Shield, Zap } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/use-toast';
 
 const Premium = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { toast } = useToast();
 
   const features = [
     {
@@ -39,64 +41,106 @@ const Premium = () => {
     }
   ];
 
+  // Handle payment success/cancellation from URL params
+  useEffect(() => {
+    const success = searchParams.get('success');
+    const cancelled = searchParams.get('cancelled');
+    const sessionId = searchParams.get('session_id');
+
+    if (success === 'true' && sessionId) {
+      verifyPayment(sessionId);
+    } else if (cancelled === 'true') {
+      toast({
+        title: "Payment Cancelled",
+        description: "Your payment was cancelled. You can try again anytime.",
+        variant: "destructive",
+      });
+      // Clean up URL
+      navigate('/premium', { replace: true });
+    }
+  }, [searchParams, navigate, toast]);
+
+  const verifyPayment = async (sessionId: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('verify-payment', {
+        body: { session_id: sessionId }
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        toast({
+          title: "Payment Successful!",
+          description: data.message || "Welcome to Premium! You now have access to all premium features.",
+        });
+        // Navigate back to dashboard
+        setTimeout(() => navigate('/'), 2000);
+      } else {
+        throw new Error(data.message || "Payment verification failed");
+      }
+    } catch (error) {
+      console.error('Payment verification error:', error);
+      toast({
+        title: "Payment Verification Failed",
+        description: "There was an error verifying your payment. Please contact support.",
+        variant: "destructive",
+      });
+    } finally {
+      // Clean up URL
+      navigate('/premium', { replace: true });
+    }
+  };
+
   const handlePayment = async () => {
     setIsProcessing(true);
     
     try {
-      // For demo purposes, we'll simulate a successful payment
-      // In a real app, this would integrate with Razorpay or Stripe
-      
+      // Get current user
       const { data: { user } } = await supabase.auth.getUser();
+      
       if (!user) {
         toast({
           title: "Authentication Required",
-          description: "Please sign in to purchase premium access.",
-          variant: "destructive"
+          description: "Please log in to upgrade to premium",
+          variant: "destructive",
         });
-        setIsProcessing(false);
         return;
       }
 
-      // Simulate payment processing delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // Update user's premium status
-      const { error } = await supabase
-        .from('profiles')
-        .update({ is_premium: true })
-        .eq('user_id', user.id);
-
-      if (error) {
-        console.error('Error updating premium status:', error);
-        toast({
-          title: "Payment Error",
-          description: "Failed to process payment. Please try again.",
-          variant: "destructive"
-        });
-        setIsProcessing(false);
-        return;
+      // Get the session token for the API call
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) {
+        throw new Error("No valid session found");
       }
 
-      toast({
-        title: "Payment Successful!",
-        description: "Welcome to Premium! You now have access to all counselor information.",
+      // Create Stripe checkout session
+      const { data, error } = await supabase.functions.invoke('create-payment', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
       });
 
-      // Redirect back to dashboard
-      setTimeout(() => {
-        navigate('/');
-      }, 1500);
+      if (error) {
+        throw error;
+      }
 
+      if (data?.url) {
+        // Redirect to Stripe checkout
+        window.open(data.url, '_blank');
+      } else {
+        throw new Error("No checkout URL received");
+      }
     } catch (error) {
       console.error('Payment error:', error);
       toast({
         title: "Payment Failed",
-        description: "Something went wrong. Please try again.",
-        variant: "destructive"
+        description: "There was an error starting your payment. Please try again.",
+        variant: "destructive",
       });
+    } finally {
+      setIsProcessing(false);
     }
-    
-    setIsProcessing(false);
   };
 
   return (
@@ -185,7 +229,7 @@ const Premium = () => {
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="text-center">
-                  <div className="text-4xl font-bold">₹999</div>
+                  <div className="text-4xl font-bold">$49.99</div>
                   <p className="text-purple-100">Lifetime Access</p>
                 </div>
 
@@ -225,14 +269,14 @@ const Premium = () => {
                   ) : (
                     <>
                       <Crown className="mr-2 h-4 w-4" />
-                      Pay with Razorpay
+                      Pay with Stripe
                     </>
                   )}
                 </Button>
 
                 <div className="text-center">
                   <p className="text-xs text-purple-100">
-                    Secure payment powered by Razorpay
+                    Secure payment powered by Stripe
                   </p>
                   <p className="text-xs text-purple-100 mt-1">
                     30-day money-back guarantee
