@@ -56,7 +56,7 @@ serve(async (req) => {
               name: "Premium Access - Lifetime",
               description: "Get lifetime access to professional counselors and premium features"
             },
-            unit_amount: 4999, // $49.99 in cents
+            unit_amount: 900, // $9.00 in cents
           },
           quantity: 1,
         },

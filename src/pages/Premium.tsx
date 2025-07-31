@@ -229,7 +229,7 @@ const Premium = () => {
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="text-center">
-                  <div className="text-4xl font-bold">$49.99</div>
+                  <div className="text-4xl font-bold">$9</div>
                   <p className="text-purple-100">Lifetime Access</p>
                 </div>
 
